@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CroppingJS</title>
+</head>
+
+<body>
+  <div class="resize-container">
+    <span class="resize-handle resize-handle-nw"></span>
+    <span class="resize-handle resize-handle-ne"></span>
+    <img class="resize-image" src="image.jpg" alt="Image" />
+    <span class="resize-handle resize-handle-se"></span>
+    <span class="resize-handle resize-handle-sw"></span>
+  </div>
+
+  <div class="overlay">
+    <div class="overlay-inner">
+    </div>
+  </div>
+  <button class="btn-crop js-crop">Crop</button>
+
+  <a href="#" style="opacity: 0;" class="button" id="btn-download" download="my-file-name.png">Download</a>
+
+  <style>
+    .resize-container {
+      position: relative;
+      display: inline-block;
+      cursor: move;
+      margin: 0 auto;
+    }
+
+    .resize-container img {
+      display: block
+    }
+
+    .resize-container:hover img,
+    .resize-container:active img {
+      outline: 2px dashed rgba(222, 60, 80, .9);
+    }
+
+    .resize-handle-ne,
+    .resize-handle-ne,
+    .resize-handle-se,
+    .resize-handle-nw,
+    .resize-handle-sw {
+      position: absolute;
+      display: block;
+      width: 10px;
+      height: 10px;
+      background: rgba(222, 60, 80, .9);
+      z-index: 999;
+    }
+
+    .resize-handle-nw {
+      top: -5px;
+      left: -5px;
+      cursor: nw-resize;
+    }
+
+    .resize-handle-sw {
+      bottom: -5px;
+      left: -5px;
+      cursor: sw-resize;
+    }
+
+    .resize-handle-ne {
+      top: -5px;
+      right: -5px;
+      cursor: ne-resize;
+    }
+
+    .resize-handle-se {
+      bottom: -5px;
+      right: -5px;
+      cursor: se-resize;
+    }
+
+    .overlay {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      margin-left: -100px;
+      margin-top: -100px;
+      z-index: 999;
+      width: 200px;
+      height: 200px;
+      border: solid 2px rgba(222, 60, 80, .9);
+      box-sizing: content-box;
+      pointer-events: none;
+    }
+
+    .overlay:after,
+    .overlay:before {
+      content: '';
+      position: absolute;
+      display: block;
+      width: 204px;
+      height: 40px;
+      border-left: dashed 2px rgba(222, 60, 80, .9);
+      border-right: dashed 2px rgba(222, 60, 80, .9);
+    }
+
+    .overlay:before {
+      top: 0;
+      margin-left: -2px;
+      margin-top: -40px;
+    }
+
+    .overlay:after {
+      bottom: 0;
+      margin-left: -2px;
+      margin-bottom: -40px;
+    }
+
+    .overlay-inner:after,
+    .overlay-inner:before {
+      content: '';
+      position: absolute;
+      display: block;
+      width: 40px;
+      height: 204px;
+      border-top: dashed 2px rgba(222, 60, 80, .9);
+      border-bottom: dashed 2px rgba(222, 60, 80, .9);
+    }
+
+    .overlay-inner:before {
+      left: 0;
+      margin-left: -40px;
+      margin-top: -2px;
+    }
+
+    .overlay-inner:after {
+      right: 0;
+      margin-right: -40px;
+      margin-top: -2px;
+    }
+
+    .btn-crop {
+      position: absolute;
+      vertical-align: bottom;
+      right: 5px;
+      bottom: 5px;
+      padding: 6px 10px;
+      z-index: 999;
+      background-color: rgb(222, 60, 80);
+      border: none;
+      border-radius: 5px;
+      color: #FFF;
+    }
+  </style>
+
+  <script>
+    const resizableImage = function (image) {
+      let container = null;
+      const origSrc = new Image();
+      const imageTarget = image;
+      const eventState = {};
+      const constrain = false;
+      const jsCrop = null;
+      minWidth = 60;
+      minHeight = 60;
+      maxWidth = 800;
+      maxHeight = 900;
+
+      resizeCanvas = document.createElement('canvas');
+
+      const init = function () {
+        origSrc.src = imageTarget.src;
+
+        container = document.querySelector('.resize-container');
+
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+
+        resizeHandles.forEach(item => item.addEventListener('mousedown', startResize))
+        imageTarget.addEventListener('mousedown', startMoving);
+        const jsCrop = document.querySelector('.js-crop');
+
+        jsCrop.addEventListener('click', crop)
+      }
+
+      const startResize = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        saveEventState(e);
+
+        document.addEventListener('mouseup', endResize);
+        document.addEventListener('mousemove', resizing);
+      }
+
+      const saveEventState = function (e) {
+        eventState.container_width = container.clientWidth;
+        eventState.container_height = container.clientHeight;
+        eventState.container_left = container.offsetLeft;
+        eventState.container_top = container.offsetTop;
+        eventState.mouse_x = (e.clientX || e.pageX || e.originalEvent.touches[0].clientX) + window.scrollX;
+        eventState.mouse_y = (e.clientY || e.pageY || e.originalEvent.touches[0].clientY) + window.scrollY;
+
+        eventState.evnt = e;
+      }
+
+      const endResize = function (e) {
+        e.preventDefault();
+        document.removeEventListener('mouseup', endResize);
+        document.removeEventListener('mousemove', resizing);
+      }
+
+      const resizing = function (e) {
+        var mouse = {};
+        let width = container.offsetWidth;
+        let height = container.offsetHeight;
+        let left = container.offsetLeft;
+        let top = container.offsetTop;
+
+        mouse.x = (e.clientX || e.pageX) + window.scrollX;
+        mouse.y = (e.clientY || e.pageY) + window.scrollY;
+
+        if (eventState.evnt.target.classList.contains("resize-handle-se")) {
+          width = mouse.x - eventState.container_left;
+          height = mouse.y - eventState.container_top;
+          left = eventState.container_left;
+          top = eventState.container_top;
+        } else if (eventState.evnt.target.classList.contains("resize-handle-sw")) {
+          width = eventState.container_width - (mouse.x - eventState.container_left);
+          height = mouse.y - eventState.container_top;
+          left = mouse.x;
+          top = eventState.container_top;
+        } else if (eventState.evnt.target.classList.contains("resize-handle-nw")) {
+          width = eventState.container_width - (mouse.x - eventState.container_left);
+          height = eventState.container_height - (mouse.y - eventState.container_top);
+          left = mouse.x;
+          top = mouse.y;
+          if (constrain || e.shiftKey) {
+            top = mouse.y - ((width / orig_src.width * orig_src.height) - height);
+          }
+        } else if (eventState.evnt.target.classList.contains("resize-handle-ne")) {
+          width = mouse.x - eventState.container_left;
+          height = eventState.container_height - (mouse.y - eventState.container_top);
+          left = eventState.container_left;
+          top = mouse.y;
+          if (constrain || e.shiftKey) {
+            top = mouse.y - ((width / orig_src.width * orig_src.height) - height);
+          }
+        }
+
+        if (constrain || e.shiftKey) {
+          height = width / origSrc.width * origSrc.height;
+        }
+
+        if (width > minWidth && height > minHeight && width < maxWidth && height < maxHeight) {
+          resizeImage(width, height);
+          // Without this Firefox will not re-calculate the the image dimensions until drag end
+          // container.offset({ 'left': left, 'top': top });
+          container.style.left = left + 'px';
+          container.style.top = top + 'px'
+        }
+      }
+
+      const resizeImage = function (width, height) {
+        resizeCanvas.width = width;
+        resizeCanvas.height = height;
+        resizeCanvas.getContext('2d').drawImage(origSrc, 0, 0, width, height);
+        imageTarget.src = resizeCanvas.toDataURL("image/png");
+      };
+
+      const startMoving = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        saveEventState(e);
+        document.addEventListener('mousemove', moving);
+        document.addEventListener('mouseup', endMoving);
+      }
+
+      const endMoving = function (e) {
+        e.preventDefault();
+        document.removeEventListener('mouseup', endMoving);
+        document.removeEventListener('mousemove', moving);
+      }
+
+      const moving = function (e) {
+        var mouse = {};
+        e.preventDefault();
+        e.stopPropagation();
+        mouse.x = (e.clientX || e.pageX) + window.scrollX;
+        mouse.y = (e.clientY || e.pageY) + window.scrollY;
+        container.style.left = (mouse.x - (eventState.mouse_x - eventState.container_left)) + 'px';
+        container.style.top = (mouse.y - (eventState.mouse_y - eventState.container_top)) + 'px'
+      }
+
+      const crop = function () {
+        const overlay = document.querySelector('.overlay');
+        const left = overlay.offsetLeft - container.offsetLeft;
+        const top = overlay.offsetTop - container.offsetTop;
+        const width = overlay.offsetWidth;
+        const height = overlay.offsetHeight;
+
+        const crop_canvas = document.createElement('canvas');
+        crop_canvas.width = width;
+        crop_canvas.height = height;
+
+        const button = document.querySelector('#btn-download');
+
+        crop_canvas.getContext('2d').drawImage(imageTarget, left, top, width, height, 0, 0, width, height);
+        var dataURL = crop_canvas.toDataURL('image/png');
+        button.href = dataURL;
+        button.click();
+        // window.open(crop_canvas.toDataURL("image/png"));
+      }
+
+      init();
+    }
+
+
+    const resizeImage = document.querySelector('.resize-image');
+    resizableImage(resizeImage);
+
+  </script>
+
+</body>
+
+</html>
